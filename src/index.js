@@ -12,7 +12,7 @@ const generateTestData = () => ({
     vehicleBrand: faker.vehicle.manufacturer(),
     vehicleModel: faker.vehicle.model(),
     vehicleYear: faker.date.past({ years: 20 }).getFullYear().toString(),
-    vehiclePlate: faker.string.alphanumeric({ count: 7 }).toUpperCase()
+    vehiclePlate: faker.string.alphanumeric(7).toUpperCase()
 });
 
 export const options = {
@@ -36,7 +36,6 @@ export const options = {
 }
 
 export default async function() {
-    const testData = generateTestData();
     const page = browser.newPage();
     await page.goto('http://localhost:3000/');
     const emailInput = page.locator('input[name=email]');
@@ -71,19 +70,19 @@ export default async function() {
         const vehiclePlateInput = page.locator('input[name=car-plate]');
         const submitButton = page.locator('button[class=submit-button]');
 
-        endCoverageInput.fill(testData.endCoverageDate);
-        valueInput.fill(testData.value);
-        nameInput.fill(testData.name);
-        cpfInput.fill(testData.cpf);
-        emailInput.fill(testData.email);
-        vehicleBrandInput.fill(testData.vehicleBrand);
-        vehicleModelInput.fill(testData.vehicleModel);
-        vehicleYearInput.fill(testData.vehicleYear);
-        vehiclePlateInput.fill(testData.vehiclePlate);
-        console.log(testData.vehiclePlate)
+        endCoverageInput.fill(generateTestData().endCoverageDate);
+        valueInput.fill(generateTestData().value);
+        nameInput.fill(generateTestData().name);
+        cpfInput.fill(generateTestData().cpf);
+        emailInput.fill(generateTestData().email);
+        vehicleBrandInput.fill(generateTestData().vehicleBrand);
+        vehicleModelInput.fill(generateTestData().vehicleModel);
+        vehicleYearInput.fill(generateTestData().vehicleYear);
+        vehiclePlateInput.fill(generateTestData().vehiclePlate);
         submitButton.click()
 
         await page.waitForNavigation()
         expect(page.url()).to.equal('http://localhost:3000/')
+        
     })
 }
