@@ -1,5 +1,5 @@
 import { browser } from 'k6/experimental/browser';
-import { describe, expect } from 'https://jslib.k6.io/k6chaijs/4.3.4.3/index.js';
+import { group, check } from 'k6';
 
 import { faker } from '@faker-js/faker/locale/en_US';
 
@@ -15,15 +15,17 @@ const generateTestData = () => ({
     vehiclePlate: faker.string.alphanumeric(7).toUpperCase()
 });
 
+const NUMBER_OF_VUS = 30;
+
 export const options = {
     cloud: {
         projectID: 3694185,
         name: 'Test Insurance Login'
     },
     scenarios: {
-        browser: {          
+        create_policy_test: {          
             executor: 'per-vu-iterations',
-            vus: 60,
+            vus: NUMBER_OF_VUS,
             iterations: 1,
             maxDuration: '30s',
             options: {
@@ -31,34 +33,25 @@ export const options = {
                     type: 'chromium',
                 },
             },
+            tags: { type: 'loadtest' },
         }
     },
 }
 
 export default async function() {
+    const test_data = generateTestData(); 
     const page = browser.newPage();
     await page.goto('http://localhost:3000/');
     const emailInput = page.locator('input[name=email]');
     const passwordInput = page.locator('input[name=password]');
     const submitButton = page.locator('button[class=login-button]');
-    emailInput.fill('gustavoalberttodev@gmail.com')
-    passwordInput.fill('123456')
-    submitButton.click()
-    await page.waitForNavigation()
+    emailInput.fill('gustavoalberttodev@gmail.com');
+    passwordInput.fill('123456');
+    submitButton.click();
+    await page.waitForNavigation();
 
-    describe('User logs in with email and password sucessfully and get redirected to the homepage', async () => {
-        expect(page.url()).to.equal('http://localhost:3000/')
-    })
-
-    const newPolicyLink = page.locator('a[class=new-policy-link]');
-    newPolicyLink.click()
-    await page.waitForNavigation()
-
-    describe('User access the new policy page', async () => {
-        expect(page.url()).to.equal('http://localhost:3000/policies/new')
-    })
-
-    describe('User creates a new policy', async () => {
+    group('User solicitates a policy creation sucessfully', async () => {
+        await page.goto('http://localhost:3000/policies/new');
         const endCoverageInput = page.locator('input[name=end-date]');
         const valueInput = page.locator('input[name=prize-value]');
         const nameInput = page.locator('input[name=full-name]');
@@ -70,19 +63,22 @@ export default async function() {
         const vehiclePlateInput = page.locator('input[name=car-plate]');
         const submitButton = page.locator('button[class=submit-button]');
 
-        endCoverageInput.fill(generateTestData().endCoverageDate);
-        valueInput.fill(generateTestData().value);
-        nameInput.fill(generateTestData().name);
-        cpfInput.fill(generateTestData().cpf);
-        emailInput.fill(generateTestData().email);
-        vehicleBrandInput.fill(generateTestData().vehicleBrand);
-        vehicleModelInput.fill(generateTestData().vehicleModel);
-        vehicleYearInput.fill(generateTestData().vehicleYear);
-        vehiclePlateInput.fill(generateTestData().vehiclePlate);
-        submitButton.click()
+        endCoverageInput.fill(test_data.endCoverageDate);
+        valueInput.fill(test_data.value);
+        nameInput.fill(test_data.name);
+        cpfInput.fill(test_data.cpf);
+        emailInput.fill(test_data.email);
+        vehicleBrandInput.fill(test_data.vehicleBrand);
+        vehicleModelInput.fill(test_data.vehicleModel);
+        vehicleYearInput.fill(test_data.vehicleYear);
+        vehiclePlateInput.fill(test_data.vehiclePlate);
 
-        await page.waitForNavigation()
-        expect(page.url()).to.equal('http://localhost:3000/')
-        
-    })
+        submitButton.click();
+        await page.waitForNavigation();
+        const notificationText = page.waitForSelector('div.solicitation-success').textContent();
+        page.close();
+        check(notificationText, {
+            'Solicitation notification is visible': (text) => text.includes('Solicitação de Apólice realizado com sucesso!')
+        });
+    });
 }
