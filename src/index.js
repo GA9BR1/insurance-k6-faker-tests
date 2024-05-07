@@ -20,7 +20,7 @@ const NUMBER_OF_VUS = 30;
 export const options = {
     cloud: {
         projectID: 3694185,
-        name: 'Test Insurance Login'
+        name: 'Teste Insurance Solicitation-1'
     },
     scenarios: {
         create_policy_test: {          
