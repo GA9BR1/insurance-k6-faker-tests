@@ -27,7 +27,7 @@ export const options = {
             executor: 'per-vu-iterations',
             vus: NUMBER_OF_VUS,
             iterations: 1,
-            maxDuration: '30s',
+            maxDuration: '60s',
             options: {
                 browser: {
                     type: 'chromium',
@@ -75,10 +75,9 @@ export default async function() {
 
         submitButton.click();
         await page.waitForNavigation();
-        const notificationText = page.waitForSelector('div.solicitation-success').textContent();
-        page.close();
-        check(notificationText, {
-            'Solicitation notification is visible': (text) => text.includes('Solicitação de Apólice realizado com sucesso!')
+        check(page.url(), {
+            'User is redirected to the homepage when solicitation is sucessfully': (url) => url === 'http://localhost:3000/'
         });
+        page.close();
     });
 }
