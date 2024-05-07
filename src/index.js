@@ -1,5 +1,5 @@
-import { browser } from 'k6/experimental/browser';
 import { group, check } from 'k6';
+import http from 'k6/http';
 
 import { faker } from '@faker-js/faker/locale/en_US';
 
@@ -15,12 +15,12 @@ const generateTestData = () => ({
     vehiclePlate: faker.string.alphanumeric(7).toUpperCase()
 });
 
-const NUMBER_OF_VUS = 30;
+const NUMBER_OF_VUS = 60;
 
 export const options = {
     cloud: {
         projectID: 3694185,
-        name: 'Teste Insurance Solicitation-1'
+        name: 'Teste Insurance Solicitation-2-only-req'
     },
     scenarios: {
         create_policy_test: {          
@@ -38,46 +38,48 @@ export const options = {
     },
 }
 
-export default async function() {
-    const test_data = generateTestData(); 
-    const page = browser.newPage();
-    await page.goto('http://localhost:3000/');
-    const emailInput = page.locator('input[name=email]');
-    const passwordInput = page.locator('input[name=password]');
-    const submitButton = page.locator('button[class=login-button]');
-    emailInput.fill('gustavoalberttodev@gmail.com');
-    passwordInput.fill('123456');
-    submitButton.click();
-    await page.waitForNavigation();
+export function setup() {
+    const login_page = http.get('http://localhost:3000/login');
+    const csrf = login_page.html().find('input[name=authenticity_token]').attr('value');
+    const login = http.request('POST', 'http://localhost:3000/authenticate', {
+        authenticity_token: csrf,
+        email: 'gustavoalberttodev@gmail.com',
+        password: '123456'
+    });
+    return login.cookies['rack.session'];
+}
+
+export default async function(cookies) {
+    const test_data = generateTestData();
+    const vuJar = http.cookieJar();
+    vuJar.set('http://localhost:3000/create_policy', 'rack.session', cookies[1]['Value'], 
+        { 
+            path: '/', domain: 'localhost', secure: false, httpOnly: true 
+        }
+    );
 
     group('User solicitates a policy creation sucessfully', async () => {
-        await page.goto('http://localhost:3000/policies/new');
-        const endCoverageInput = page.locator('input[name=end-date]');
-        const valueInput = page.locator('input[name=prize-value]');
-        const nameInput = page.locator('input[name=full-name]');
-        const cpfInput = page.locator('input[name=cpf]');
-        const emailInput = page.locator('input[name=email]');
-        const vehicleBrandInput = page.locator('input[name=car-brand]');
-        const vehicleModelInput = page.locator('input[name=car-model]');
-        const vehicleYearInput = page.locator('input[name=car-year]');
-        const vehiclePlateInput = page.locator('input[name=car-plate]');
-        const submitButton = page.locator('button[class=submit-button]');
+        const policy_create_page = http.get('http://localhost:3000/policies/new');
+        const csrf = policy_create_page.html().find('input[name=authenticity_token]').attr('value');
 
-        endCoverageInput.fill(test_data.endCoverageDate);
-        valueInput.fill(test_data.value);
-        nameInput.fill(test_data.name);
-        cpfInput.fill(test_data.cpf);
-        emailInput.fill(test_data.email);
-        vehicleBrandInput.fill(test_data.vehicleBrand);
-        vehicleModelInput.fill(test_data.vehicleModel);
-        vehicleYearInput.fill(test_data.vehicleYear);
-        vehiclePlateInput.fill(test_data.vehiclePlate);
-
-        submitButton.click();
-        await page.waitForNavigation();
-        check(page.url(), {
-            'User is redirected to the homepage when solicitation is sucessfully': (url) => url === 'http://localhost:3000/'
-        });
-        page.close();
+        const response = http.post('http://localhost:3000/create_policy',
+            {
+                authenticity_token: csrf,
+                'end-date': test_data.endCoverageDate,
+                'prize-value': test_data.value,
+                'full-name': test_data.name,
+                'cpf': test_data.cpf,
+                'email': test_data.email,
+                'car-brand': test_data.vehicleBrand,
+                'car-model': test_data.vehicleModel,
+                'car-year': test_data.vehicleYear,
+                'car-plate': test_data.vehiclePlate
+            },
+        );
+        check(response, 
+            {
+                'is status 200': (r) => r.status === 200,
+            }
+        )
     });
 }
